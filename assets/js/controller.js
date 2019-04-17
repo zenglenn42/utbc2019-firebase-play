@@ -1,5 +1,5 @@
 function Controller() {
-    this.model = new Model(Model.glennDbConfig);
+    this.model = new Model(Model.prototype.glennDbConfig);
     this.addSubmitHandler();
 }
 
@@ -66,6 +66,7 @@ Model.prototype.getData = function() {
 }
 
 Model.prototype.dbInit = function() {
+    console.log(this.dbConfig);
     firebase.initializeApp(this.dbConfig);
 }
 
@@ -74,17 +75,27 @@ Model.prototype.getDbRef = function(childNode) {
 }
 
 Model.prototype.dbPushRecord = function() {
-    this.dbRef.push({
-        "name": this.name,
-        "startDate": this.startDate,
-        "rate": this.rate,
-        "role": this.role
-      });
+    console.log("Adding ", this.name);
+    if (this.validInputData()) {
+        this.dbRef.push({
+            "name": this.name,
+            "startDate": this.startDate,
+            "rate": this.rate,
+            "role": this.role
+        });
+    } else {
+        console.log("Model.dbPushRecord: Invalid input data. Ignoring");
+    }
+}
+
+Model.prototype.validInputData = function() {
+    return (this.name && this.startDate && this.rate && this.role);
 }
 
 Model.prototype.addDbListener = function(dbEvent = 'child_added') {
     let that = this;
     this.dbRef.limitToLast(1).on(dbEvent, function(childSnapshot) {
+        console.log("child_added, updating view");
         let empData = childSnapshot.val();
         that.calcData = that.paySinceStartDate(empData.startDate, empData.rate);
         that.updateView(empData);
@@ -92,15 +103,21 @@ Model.prototype.addDbListener = function(dbEvent = 'child_added') {
 }
 
 Model.prototype.updateView = function(dbData) {
-    $("#employeeRecords").append(
-        `${dbData.name} ${dbData.startDate} ${dbData.rate} ${dbData.role} ${this.calcData.monthsWorked} ${this.calcData.totalPay}<br />`
+    $("#tableBody").append(
+        `<tr scope="row"></tr>
+        <td>${dbData.name}</td> 
+        <td>${dbData.startDate}</td> 
+        <td>${dbData.rate}</td> 
+        <td>${dbData.role}</td> 
+        <td>${this.calcData.monthsWorked}</td> 
+        <td>${this.calcData.totalPay}</td>`
     );
 }
 
 Model.prototype.monthsWorked = function(mdyStartDate) {
-    let startDateMsec = moment(mdy, "M/D/YYYY").valueOf();
+    let startDateMsec = moment(mdyStartDate, "M/D/YYYY").valueOf();
     let currentDate = moment();
-    let monthsWorked = currentDate.diff(startDateMsec, 'month');
+    let monthsWorked = currentDate.diff(startDateMsec, 'months');
     return monthsWorked;
 }
 
